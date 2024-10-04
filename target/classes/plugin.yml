@@ -1,0 +1,12 @@
+main: com.b5team.postrequest.Main
+name: POSTRequest
+version: 1.4
+author: bbruno5
+description: HTTP/HTTPS POST Request for send data to external PHP server
+commands:
+  pr:
+    description: Calls plugin to send data request
+permissions:
+    postrequest.pr.send:
+        description: Allows you to use postrequest
+        default: op

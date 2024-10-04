@@ -56,7 +56,7 @@ class HttpsPOSTRequest {
 						BufferedReader reader = new BufferedReader(new InputStreamReader(input));
 						String line;
 						
-						Main.getMainLogger().log(Level.INFO, "Data sent successfully!");
+						//Main.getMainLogger().log(Level.INFO, "Data sent successfully!");
 						
 						while ((line = reader.readLine()) != null) {
 							

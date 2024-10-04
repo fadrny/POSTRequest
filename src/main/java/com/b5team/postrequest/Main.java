@@ -1,59 +1,114 @@
 package com.b5team.postrequest;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.security.NoSuchAlgorithmException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.bukkit.Bukkit;
+import org.bukkit.World;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.weather.ThunderChangeEvent;
+import org.bukkit.event.weather.WeatherChangeEvent;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 
-import org.bstats.bukkit.Metrics;
 import org.bukkit.command.BlockCommandSender;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.command.RemoteConsoleCommandSender;
+
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
 
-public class Main extends JavaPlugin {
+import java.io.UnsupportedEncodingException;
+import java.security.NoSuchAlgorithmException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-	private static Settings settings;
-	private static Main plugin;
-	private static Logger logger;
-	
+public class Main extends JavaPlugin implements Listener {
+
+    private static Settings settings;
+    private static Main plugin;
+    private static Logger logger;
+    private boolean isRaining = false;
+    private boolean isThundering = false;
+
 	@Override
-	public void onEnable() {
-		
-		plugin = this;
-		logger = this.getLogger();
-		
-		ConfigHandler configHandler = new ConfigHandler();
-		try {
-			settings = configHandler.loadSettings();
-		} catch (FileNotFoundException ex) {
-			configHandler.generateConfig();
-			logger.info("POSTRequest generated a config file. Go edit it!");
-		} catch (IOException ex) {
-			logger.info("POSTRequest failed to read your configuration file.");
-            logger.log(Level.SEVERE, null, ex);
+    public void onEnable() {
+        plugin = this;
+        logger = this.getLogger();
+
+        // Load settings
+        ConfigHandler configHandler = new ConfigHandler();
+        try {
+            settings = configHandler.loadSettings();
+        } catch (Exception ex) {
+            configHandler.generateConfig();
+            logger.info("POSTRequest generated a config file. Go edit it!");
             this.getPluginLoader().disablePlugin(this);
             return;
-		}
-		
-		Metrics metrics = new Metrics(this);
-		
-		if (metrics.getPluginData() != null) {
-			
-			logger.info("Metrics enabled!");
-		}
-	}
-	
-	@Override
-	public void onDisable() {
-		logger.info("POSTRequest is now disabled. You will no longer capable to send HTTP/HTTPS POST requests.");
-	}
-	
+        }
+
+        // Initialize weather state
+        World world = Bukkit.getWorlds().get(0); 
+        isRaining = world.hasStorm();
+        isThundering = world.isThundering();
+
+        // Register event listener
+        Bukkit.getPluginManager().registerEvents(this, this);
+
+        // Schedule the task to run every 5 seconds
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                sendTimeAndWeather();
+            }
+        }.runTaskTimer(this, 0, 100); // 100 ticks = 5 seconds
+    }
+
+    @Override
+    public void onDisable() {
+        logger.info("POSTRequest is now disabled. You will no longer be capable to send HTTP/HTTPS POST requests.");
+    }
+
+    @EventHandler
+    public void onWeatherChange(WeatherChangeEvent event) {
+        if (event.getWorld().equals(Bukkit.getWorlds().get(0))) { 
+            isRaining = event.toWeatherState();
+        }
+    }
+
+    @EventHandler
+    public void onThunderChange(ThunderChangeEvent event) {
+        if (event.getWorld().equals(Bukkit.getWorlds().get(0))) { 
+            isThundering = event.toThunderState();
+        }
+    }
+
+    private void sendTimeAndWeather() {
+        World world = Bukkit.getWorlds().get(0);
+        long time = world.getTime();
+        String weather = isThundering ? "thunder" : (isRaining ? "rain" : "clear");
+
+        String[] args = new String[]{"time=" + time, "weather=" + weather};
+        String url = Main.getSettings().getUrl();
+        String protocol = Main.getSettings().getProtocol();
+        String pwd = Main.getSettings().getPwd();
+
+        try {
+            Utils util = new Utils();
+            String hash = util.encode(pwd);
+
+            if (protocol.equals("https")) {
+                HttpsPOSTRequest.sendRequest(url, hash, args);
+            } else if (protocol.equals("http")) {
+                HttpPOSTRequest.sendRequest(url, hash, args);
+            }
+
+        } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
+            logger.log(Level.SEVERE, "Non-unicode characters found in your password. Change it and reload the server.");
+            e.printStackTrace();
+        }
+    }
+
+
 	@Override
 	public boolean onCommand(CommandSender sender,
 			Command cmd,
@@ -109,16 +164,16 @@ public class Main extends JavaPlugin {
         }
 		return false;
 	}
-	
-	protected static Main getInstance() {
-		return plugin;
-	}
-	
-	protected static Logger getMainLogger() {
-		return logger;
-	}
-	
-	protected static Settings getSettings() {
-		return settings;
-	}
+
+    protected static Main getInstance() {
+        return plugin;
+    }
+
+    protected static Logger getMainLogger() {
+        return logger;
+    }
+
+    protected static Settings getSettings() {
+        return settings;
+    }
 }
