@@ -18,10 +18,10 @@ endif;
 
 if($receivedHash != "") {
     if($receivedHash == hash($hashAlgorithm, $checkpass)) {
-        print_r("Passwords match! Saving data.\n");
+        //print_r("Passwords match! Saving data.\n");
         
         //Put your code here.
-        print_r("All saved.");
+        //print_r("All saved.");
 
         //generate json with arg0 and arg1 on server
         $data = array('arg0' => $arg0, 'arg1' => $arg1);

@@ -87,7 +87,7 @@ public class Main extends JavaPlugin implements Listener {
         long time = world.getTime();
         String weather = isThundering ? "thunder" : (isRaining ? "rain" : "clear");
 
-        String[] args = new String[]{"time=" + time, "weather=" + weather};
+        String[] args = new String[]{Long.toString(time), weather};
         String url = Main.getSettings().getUrl();
         String protocol = Main.getSettings().getProtocol();
         String pwd = Main.getSettings().getPwd();
